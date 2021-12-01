@@ -1,17 +1,30 @@
 -module(advent).
 
 -export([
-  day1/0,
-  get_differences/1
+  day1_part1/0,
+  day1_part2/0,
+  get_differences/1,
+  get_trio_sums/1
 ]).
 
 -include_lib("eunit/include/eunit.hrl").
 
-day1() ->
+day1_part1() ->
   {ok, Content} = file:read_file("input.txt"),
   Lines = string:lexemes(Content, "\n"),
   Depths = [binary_to_integer(DepthString) || DepthString <- Lines],
   Differences = get_differences(Depths),
+  Increases = [X || X <- Differences, X =:= increased],
+  IncreasedCount = length(Increases),
+  io:fwrite("~p~n", [IncreasedCount]),
+  ok.
+
+day1_part2() ->
+  {ok, Content} = file:read_file("input.txt"),
+  Lines = string:lexemes(Content, "\n"),
+  Depths = [binary_to_integer(DepthString) || DepthString <- Lines],
+  Trios = get_trio_sums(Depths),
+  Differences = get_differences(Trios),
   Increases = [X || X <- Differences, X =:= increased],
   IncreasedCount = length(Increases),
   io:fwrite("~p~n", [IncreasedCount]),
@@ -29,12 +42,25 @@ get_differences([_Head | _Tail] = Depths) ->
          end,
   get_differences(Heads) ++ [Diff].
 
+get_trio_sums([_A]) ->
+  [];
+get_trio_sums([_A, _B]) ->
+  [];
+get_trio_sums([A, B, C | Tail]) ->
+  Sum = A + B + C,
+  [Sum] ++ get_trio_sums([B, C] ++ Tail).
+
 day1_test() ->
   ?assertMatch([na], get_differences([1])),
   ?assertMatch([na, increased], get_differences([1, 2])),
   ?assertMatch([na, increased, increased], get_differences([1, 2, 3])),
   ?assertMatch([na, not_increased, not_increased], get_differences([3, 2, 1])),
   ?assertMatch([na, not_increased, not_increased], get_differences([3, 3, 3])),
+
+  ?assertMatch([], get_trio_sums([1])),
+  ?assertMatch([], get_trio_sums([1, 2])),
+  ?assertMatch([6], get_trio_sums([1, 2, 3])),
+  ?assertMatch([6, 9], get_trio_sums([1, 2, 3, 4])),
   ok.
 
 
