@@ -8,7 +8,7 @@ Solving these challenges in Erlang :)
 
 ```
 erl
-c(advent),advent:day1().
+c(advent),advent:day1_part1().
 ```
 
 # How to test
