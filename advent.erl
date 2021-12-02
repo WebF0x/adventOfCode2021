@@ -77,11 +77,11 @@ day2_part1() ->
   {ok, Content} = file:read_file("input.txt"),
   Lines = string:lexemes(Content, "\n"),
   SplitLines = [string:lexemes(Line, " ") || Line <- Lines],
-  Commands = [{binary_to_atom(Command), binary_to_integer(Distance)} || [Command, Distance] <- SplitLines],
+  Commands = [{list_to_atom(binary_to_list(Command)), binary_to_integer(Distance)} || [Command, Distance] <- SplitLines],
   Position = move_submarine(Commands),
   {X, Y} = Position,
   io:fwrite("~p~n", [Position]),
-  io:fwrite("~p~n", [X*Y]),
+  io:fwrite("~p~n", [X * Y]),
   ok.
 
 day2_part2() ->
