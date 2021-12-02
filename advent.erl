@@ -62,8 +62,3 @@ day1_test() ->
   ?assertMatch([6], get_trio_sums([1, 2, 3])),
   ?assertMatch([6, 9], get_trio_sums([1, 2, 3, 4])),
   ok.
-
-
-% read file
-% day1
-% count nb of increased
