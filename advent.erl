@@ -3,11 +3,17 @@
 -export([
   day1_part1/0,
   day1_part2/0,
+  day2_part1/0,
+  day2_part2/0,
   get_differences/1,
   get_trio_sums/1
 ]).
 
 -include_lib("eunit/include/eunit.hrl").
+
+%%###############%%
+%%     DAY 1     %%
+%%###############%%
 
 day1_part1() ->
   {ok, Content} = file:read_file("input.txt"),
@@ -61,4 +67,41 @@ day1_test() ->
   ?assertMatch([], get_trio_sums([1, 2])),
   ?assertMatch([6], get_trio_sums([1, 2, 3])),
   ?assertMatch([6, 9], get_trio_sums([1, 2, 3, 4])),
+  ok.
+
+%%###############%%
+%%     DAY 2     %%
+%%###############%%
+
+day2_part1() ->
+  {ok, Content} = file:read_file("input.txt"),
+  Lines = string:lexemes(Content, "\n"),
+  SplitLines = [string:lexemes(Line, " ") || Line <- Lines],
+  Commands = [{binary_to_atom(Command), binary_to_integer(Distance)} || [Command, Distance] <- SplitLines],
+  Position = move_submarine(Commands),
+  {X, Y} = Position,
+  io:fwrite("~p~n", [Position]),
+  io:fwrite("~p~n", [X*Y]),
+  ok.
+
+day2_part2() ->
+  ok.
+
+move_submarine([Command | RemainingCommands]) ->
+  {DeltaX, DeltaY} = case Command of
+    {up, Distance} -> {0, -Distance};
+    {forward, Distance} -> {Distance, 0};
+    {down, Distance} -> {0, Distance}
+  end,
+  {X, Y} = move_submarine(RemainingCommands),
+  {X + DeltaX, Y + DeltaY};
+move_submarine([]) ->
+  {0, 0}.
+
+day2_test() ->
+  ?assertMatch({0, 0}, move_submarine([])),
+  ?assertMatch({1, 0}, move_submarine([{forward, 1}])),
+  ?assertMatch({0, -2}, move_submarine([{up, 2}])),
+  ?assertMatch({0, 3}, move_submarine([{down, 3}])),
+  ?assertMatch({15, 10}, move_submarine([{forward, 5}, {down, 5}, {forward, 8}, {up, 3}, {down, 8}, {forward, 2}])),
   ok.
