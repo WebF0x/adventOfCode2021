@@ -5,6 +5,8 @@
   day1_part2/0,
   day2_part1/0,
   day2_part2/0,
+  day3_part1/0,
+  day3_part2/0,
   get_differences/1,
   get_trio_sums/1
 ]).
@@ -132,3 +134,85 @@ day2_test() ->
   ?assertMatch({2, 6}, move_submarine_with_aim([{down, 3}, {forward, 2}])),
   ?assertMatch({15, 60}, move_submarine_with_aim([{forward, 5}, {down, 5}, {forward, 8}, {up, 3}, {down, 8}, {forward, 2}])),
   ok.
+
+%%###############%%
+%%     DAY 3     %%
+%%###############%%
+
+day3_part1() ->
+  {ok, Content} = file:read_file("input.txt"),
+  Lines = string:lexemes(Content, "\n"),
+  DiagnosticReport = [binary_to_list(Line) || Line <- Lines],
+  io:fwrite("~p~n", [DiagnosticReport]),
+  GammaDecimal = decimal(gamma(DiagnosticReport)),
+  EpsilonDecimal = decimal(epsilon(DiagnosticReport)),
+  io:fwrite("~p~n", [GammaDecimal * EpsilonDecimal]),
+  ok.
+
+day3_part2() ->
+  {ok, Content} = file:read_file("input.txt"),
+  Lines = string:lexemes(Content, "\n"),
+  SplitLines = [string:lexemes(Line, " ") || Line <- Lines],
+  Commands = [{list_to_atom(binary_to_list(Command)), binary_to_integer(Distance)} || [Command, Distance] <- SplitLines],
+  Position = move_submarine(Commands),
+  {X, Y} = Position,
+  io:fwrite("~p~n", [Position]),
+  io:fwrite("~p~n", [X * Y]),
+  ok.
+
+day3_test() ->
+  DiagnosticReport = [
+    "001",
+    "111",
+    "101"
+  ],
+  ?assertMatch([2, 1, 3], counts(DiagnosticReport)),
+  ?assertMatch([1, 0, 1], gamma(DiagnosticReport)),
+  ?assertMatch([0, 1, 0], epsilon(DiagnosticReport)),
+  ?assertMatch(5, decimal([1, 0, 1])),
+  ok.
+
+counts([Head | _Tail] = DiagnosticReport) ->
+  Counts = [0 || _ <- Head],
+  counts(DiagnosticReport, Counts).
+
+counts([], Counts) ->
+  Counts;
+counts([Head | Tail], Counts) ->
+  CountsSoFar = lists:zipwith(
+    fun(Char, Value) ->
+      case Char of
+        49 -> Value + 1;
+        48 -> Value
+      end
+    end,
+    Head,
+    Counts
+  ),
+  counts(Tail, CountsSoFar).
+
+gamma(DiagnosticReport) ->
+  Counts = counts(DiagnosticReport),
+  Threshold = length(DiagnosticReport) / 2,
+  [
+    case X > Threshold of
+      true -> 1;
+      false -> 0
+    end || X <- Counts
+  ].
+
+epsilon(DiagnosticReport) ->
+  Gamma = gamma(DiagnosticReport),
+  [
+    case X of
+      1 -> 0;
+      0 -> 1
+    end || X <- Gamma
+  ].
+
+decimal([]) ->
+  0;
+decimal([Head | Tail] = Bits) ->
+  FloatValue = Head * math:pow(2, length(Bits) - 1),
+  Value = list_to_integer(float_to_list(FloatValue, [{decimals, 0}])),
+  Value + decimal(Tail).
