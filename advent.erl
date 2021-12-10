@@ -7,6 +7,8 @@
   day2_part2/0,
   day3_part1/0,
   day3_part2/0,
+  day4_part1/0,
+  day4_part2/0,
   get_differences/1,
   get_trio_sums/1
 ]).
@@ -288,3 +290,160 @@ filter(DiagnosticReport, Bits) ->
   true -> 
     NewDiagnosticReport
   end.
+
+%%###############%%
+%%     DAY 4     %%
+%%###############%%
+
+day4_part1() ->
+  {ok, Content} = file:read_file("input.txt"),
+  [NumbersString | BoardsString] = string:split(Content, "\n\n", all),
+  BoardsRaw = [string:lexemes(BoardString, "\n") || BoardString <- BoardsString],
+  Boards = lists:map(
+  fun(Board) -> 
+    lists:map(
+      fun(BoardRow) -> 
+        Numbers = string:lexemes(BoardRow, " "),
+        [{binary_to_integer(Number), unmarked} || Number <- Numbers]
+      end, Board)
+  end, BoardsRaw),
+  Numbers = [binary_to_integer(Number) || Number <- string:lexemes(NumbersString, ",")],
+  {Index, WinningBoard} = winning_board(Numbers, Boards),
+  BoardScore = board_score(WinningBoard),
+  {WinningMove, _} = winning_move(Numbers, lists:nth(Index, Boards)),
+  WinningNumber = lists:nth(WinningMove, Numbers),
+  io:fwrite("Score: ~p~n", [BoardScore]),
+  io:fwrite("Winning Number: ~p~n", [WinningNumber]),
+  io:fwrite("~p~n", [BoardScore * WinningNumber]),
+  ok.
+
+day4_part2() ->
+  {ok, Content} = file:read_file("input.txt"),
+  [NumbersString | BoardsString] = string:split(Content, "\n\n", all),
+  BoardsRaw = [string:lexemes(BoardString, "\n") || BoardString <- BoardsString],
+  Boards = lists:map(
+  fun(Board) -> 
+    lists:map(
+      fun(BoardRow) -> 
+        Numbers = string:lexemes(BoardRow, " "),
+        [{binary_to_integer(Number), unmarked} || Number <- Numbers]
+      end, Board)
+  end, BoardsRaw),
+  Numbers = [binary_to_integer(Number) || Number <- string:lexemes(NumbersString, ",")],
+  {Index, LosingBoard} = losing_board(Numbers, Boards),
+  BoardScore = board_score(LosingBoard),
+  {WinningMove, _} = winning_move(Numbers, lists:nth(Index, Boards)),
+  WinningNumber = lists:nth(WinningMove, Numbers),
+  io:fwrite("Score: ~p~n", [BoardScore]),
+  io:fwrite("Winning Number: ~p~n", [WinningNumber]),
+  io:fwrite("~p~n", [BoardScore * WinningNumber]),
+  ok.
+
+day4_test() ->
+  Numbers = [7,4,9,5,11,17,23,2,0,14,21,24,10,16,13,6,15,25,12,22,18,20,8,19,3,26,1],
+  Boards = [
+    [[{22, unmarked}, {13, unmarked}, {17, unmarked}, {11, unmarked},  {0, unmarked}],
+    [{8, unmarked},  {2, unmarked}, {23, unmarked},  {4, unmarked}, {24, unmarked}],
+    [{21, unmarked},  {9, unmarked}, {14, unmarked}, {16, unmarked},  {7, unmarked}],
+    [{6, unmarked}, {10, unmarked},  {3, unmarked}, {18, unmarked},  {5, unmarked}],
+    [{1, unmarked}, {12, unmarked}, {20, unmarked}, {15, unmarked}, {19, unmarked}]],
+    [[{3, unmarked}, {15, unmarked},  {0, unmarked},  {2, unmarked}, {22, unmarked}],
+    [{9, unmarked}, {18, unmarked}, {13, unmarked}, {17, unmarked},  {5, unmarked}],
+    [{19, unmarked},  {8, unmarked},  {7, unmarked}, {25, unmarked}, {23, unmarked}],
+    [{20, unmarked}, {11, unmarked}, {10, unmarked}, {24, unmarked},  {4, unmarked}],
+    [{14, unmarked}, {21, unmarked}, {16, unmarked}, {12, unmarked},  {6, unmarked}]],
+    [[{14, unmarked}, {21, unmarked}, {17, unmarked}, {24, unmarked},  {4, unmarked}],
+    [{10, unmarked}, {16, unmarked}, {15, unmarked},  {9, unmarked}, {19, unmarked}],
+    [{18, unmarked},  {8, unmarked}, {23, unmarked}, {26, unmarked}, {20, unmarked}],
+    [{22, unmarked}, {11, unmarked}, {13, unmarked},  {6, unmarked},  {5, unmarked}],
+    [{2, unmarked},  {0, unmarked}, {12, unmarked},  {3, unmarked},  {7, unmarked}]]
+  ],
+  WinningBoard = [
+    [{14, marked}, {21, marked}, {17, marked}, {24, marked},  {4, marked}],
+    [{10, unmarked}, {16, unmarked}, {15, unmarked},  {9, marked}, {19, unmarked}],
+    [{18, unmarked},  {8, unmarked}, {23, marked}, {26, unmarked}, {20, unmarked}],
+    [{22, unmarked}, {11, marked}, {13, unmarked},  {6, unmarked},  {5, marked}],
+    [{2, marked},  {0, marked}, {12, unmarked},  {3, unmarked},  {7, marked}]
+  ],
+
+  ?assertMatch(188, board_score(WinningBoard)),
+  ?assertMatch({12, WinningBoard}, winning_move(Numbers, lists:nth(3, Boards))),
+  ?assertMatch({3, WinningBoard}, winning_board(Numbers, Boards)),
+  ok.
+
+board_score(Board) ->
+  ScoreNumbers = lists:flatmap(
+    fun(BoardRow) -> 
+      [Number || {Number, State} <- BoardRow, State == unmarked] 
+    end, Board),
+  lists:sum(ScoreNumbers).
+
+winning_move(Numbers, Board) ->
+  winning_move(Numbers, Board, 1).
+
+winning_move([HeadNumber | TailNumbers], Board, Moves) ->
+  NewBoard = mark_number(HeadNumber, Board),
+  case is_board_winning(NewBoard) of
+    true -> {Moves, NewBoard};
+    false -> winning_move(TailNumbers, NewBoard, Moves + 1)
+  end.
+
+mark_number(Number, Board) ->
+  lists:map(
+    fun(BoardRow) ->
+      lists:map(
+        fun({BoardNumber, _} = BoardCell) ->
+          if 
+            BoardNumber == Number ->
+              {BoardNumber, marked};
+            true ->
+              BoardCell
+          end
+        end, BoardRow)
+    end, Board).
+
+is_board_winning(Board) ->
+  WinningRows = winning_rows(Board),
+  WinningColumns = winning_rows(transpose(Board)),
+  (length(WinningColumns) =/= 0 orelse length(WinningRows) =/= 0).
+
+winning_rows(Board) ->
+  lists:filter(fun(BoardRow) ->
+    UnmarkedCells = [marked || {_, State} <- BoardRow, State == unmarked],
+    if 
+      length(UnmarkedCells) == 0 ->
+        true;
+      true ->
+        false
+    end
+  end, Board).
+
+transpose([[]|_]) -> [];
+transpose(M) ->
+  [lists:map(fun hd/1, M) | transpose(lists:map(fun tl/1, M))].
+
+winning_board(Numbers, Boards) ->
+  WinningMoves = lists:map(fun(Board) ->
+    {Move, _} = winning_move(Numbers, Board),
+    Move
+  end, Boards),
+  WinningMove = lists:min(WinningMoves),
+  Index = index_of(WinningMove, WinningMoves),
+  {_, WinningBoard} = winning_move(Numbers, lists:nth(Index, Boards)),
+  {Index, WinningBoard}.
+
+losing_board(Numbers, Boards) ->
+  WinningMoves = lists:map(fun(Board) ->
+    {Move, _} = winning_move(Numbers, Board),
+    Move
+  end, Boards),
+  LosingMove = lists:max(WinningMoves),
+  Index = index_of(LosingMove, WinningMoves),
+  {_, LosingBoard} = winning_move(Numbers, lists:nth(Index, Boards)),
+  {Index, LosingBoard}.
+
+index_of(Item, List) -> index_of(Item, List, 1).
+
+index_of(_, [], _)  -> not_found;
+index_of(Item, [Item|_], Index) -> Index;
+index_of(Item, [_|Tl], Index) -> index_of(Item, Tl, Index+1).
