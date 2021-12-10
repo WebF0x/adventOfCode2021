@@ -152,12 +152,10 @@ day3_part1() ->
 day3_part2() ->
   {ok, Content} = file:read_file("input.txt"),
   Lines = string:lexemes(Content, "\n"),
-  SplitLines = [string:lexemes(Line, " ") || Line <- Lines],
-  Commands = [{list_to_atom(binary_to_list(Command)), binary_to_integer(Distance)} || [Command, Distance] <- SplitLines],
-  Position = move_submarine(Commands),
-  {X, Y} = Position,
-  io:fwrite("~p~n", [Position]),
-  io:fwrite("~p~n", [X * Y]),
+  DiagnosticReport = [binary_to_list(Line) || Line <- Lines],
+  OxygenRating = decimal(oxygen(DiagnosticReport)),
+  Co2Rating = decimal(co2(DiagnosticReport)),
+  io:fwrite("~p~n", [OxygenRating * Co2Rating]),
   ok.
 
 day3_test() ->
@@ -170,6 +168,35 @@ day3_test() ->
   ?assertMatch([1, 0, 1], gamma(DiagnosticReport)),
   ?assertMatch([0, 1, 0], epsilon(DiagnosticReport)),
   ?assertMatch(5, decimal([1, 0, 1])),
+
+  DiagnosticReport2 = [
+    "00100",
+    "11110",
+    "10110",
+    "10111",
+    "10101",
+    "01111",
+    "00111",
+    "11100",
+    "10000",
+    "11001",
+    "00010",
+    "01010"
+  ],
+  FilteredReport = [
+    "11110",
+    "10110",
+    "10111",
+    "10101",
+    "11100",
+    "10000",
+    "11001"
+  ],
+  ?assertMatch(FilteredReport, filter(DiagnosticReport2, [1])),
+  ?assertMatch([1,0,1,1,1], oxygen(DiagnosticReport2)),
+  ?assertMatch([0,1,0,1,0], co2(DiagnosticReport2)),
+  ?assertMatch(23, decimal([1, 0, 1, 1, 1])),
+  ?assertMatch(10, decimal([0, 1, 0, 1, 0])),
   ok.
 
 counts([Head | _Tail] = DiagnosticReport) ->
@@ -195,7 +222,7 @@ gamma(DiagnosticReport) ->
   Counts = counts(DiagnosticReport),
   Threshold = length(DiagnosticReport) / 2,
   [
-    case X > Threshold of
+    case X >= Threshold of
       true -> 1;
       false -> 0
     end || X <- Counts
@@ -216,3 +243,48 @@ decimal([Head | Tail] = Bits) ->
   FloatValue = Head * math:pow(2, length(Bits) - 1),
   Value = list_to_integer(float_to_list(FloatValue, [{decimals, 0}])),
   Value + decimal(Tail).
+
+oxygen(DiagnosticReport) ->
+  oxygen(DiagnosticReport, []).
+
+oxygen([Rating], _) ->
+  lists:map(fun(Character) -> 
+    case Character of
+      49 -> 1;
+      48 -> 0
+    end
+  end, Rating);
+oxygen(DiagnosticReport, Bits) ->
+  NewBit = lists:nth(length(Bits) + 1, gamma(DiagnosticReport)),
+  NewBits = Bits ++ [NewBit],
+  RemainingDiagnotic = filter(DiagnosticReport, NewBits),
+  oxygen(RemainingDiagnotic, NewBits).
+
+co2(DiagnosticReport) ->
+  co2(DiagnosticReport, []).
+
+co2([Rating], _) ->
+  lists:map(fun(Character) -> 
+    case Character of
+      49 -> 1;
+      48 -> 0
+    end
+  end, Rating);
+co2(DiagnosticReport, Bits) ->
+  NewBit = lists:nth(length(Bits) + 1, epsilon(DiagnosticReport)),
+  NewBits = Bits ++ [NewBit],
+  RemainingDiagnotic = filter(DiagnosticReport, NewBits),
+  co2(RemainingDiagnotic, NewBits).
+
+filter(DiagnosticReport, Bits) ->
+  FilterBit = case lists:last(Bits) of
+    1 -> 49;
+    0 -> 48
+  end,
+  Index = length(Bits),
+  NewDiagnosticReport = [DiagnosticData || DiagnosticData <- DiagnosticReport, lists:nth(Index, DiagnosticData) == FilterBit],
+  if length(NewDiagnosticReport) == 0 ->
+    [lists:last(DiagnosticReport)];
+  true -> 
+    NewDiagnosticReport
+  end.
