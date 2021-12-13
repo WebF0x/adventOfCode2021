@@ -9,6 +9,7 @@
   day3_part2/0,
   day4_part1/0,
   day4_part2/0,
+  day5_part2/0,
   get_differences/1,
   get_trio_sums/1
 ]).
@@ -436,7 +437,7 @@ losing_board(Numbers, Boards) ->
   WinningMoves = lists:map(fun(Board) ->
     {Move, _} = winning_move(Numbers, Board),
     Move
-  end, Boards),
+                           end, Boards),
   LosingMove = lists:max(WinningMoves),
   Index = index_of(LosingMove, WinningMoves),
   {_, LosingBoard} = winning_move(Numbers, lists:nth(Index, Boards)),
@@ -444,6 +445,95 @@ losing_board(Numbers, Boards) ->
 
 index_of(Item, List) -> index_of(Item, List, 1).
 
-index_of(_, [], _)  -> not_found;
-index_of(Item, [Item|_], Index) -> Index;
-index_of(Item, [_|Tl], Index) -> index_of(Item, Tl, Index+1).
+index_of(_, [], _) -> not_found;
+index_of(Item, [Item | _], Index) -> Index;
+index_of(Item, [_ | Tl], Index) -> index_of(Item, Tl, Index + 1).
+
+%%###############%%
+%%     DAY 5     %%
+%%###############%%
+
+day5_part2() ->
+  {ok, Content} = file:read_file("input.txt"),
+  RawVentsLines = string:split(Content, "\n", all),
+  VentsLines = lists:map(
+    fun(RawVentsLine) ->
+      [From, To] = string:split(RawVentsLine, " -> ", all),
+      [X1, Y1] = string:split(From, ",", all),
+      [X2, Y2] = string:split(To, ",", all),
+      {{from, binary_to_integer(X1), binary_to_integer(Y1)}, {to, binary_to_integer(X2), binary_to_integer(Y2)}}
+    end,
+    RawVentsLines
+  ),
+  RowWithZeroes = lists:duplicate(1000, 0),
+  Map = lists:duplicate(1000, RowWithZeroes),
+  VentsMap = lists:flatten(place_vents(Map, VentsLines)),
+  Answer = length(lists:filter(fun(NbVent) -> NbVent >= 2 end, VentsMap)),
+
+  io:fwrite("Answer: ~p~n", [Answer]),
+  ok.
+
+place_vents(OriginalMap, VentsLines) ->
+  Vents = lists:flatmap(fun line_to_points/1, VentsLines),
+
+  lists:foldl(
+    fun({X, Y}, Map) ->
+      {PreRow, [Row | PostRow]} = lists:split(Y, Map),
+      {PreNbVents, [NbVents | PostNbVents]} = lists:split(X, Row),
+      NewRow = PreNbVents ++ [NbVents + 1] ++ PostNbVents,
+      NewMap = PreRow ++ [NewRow] ++ PostRow,
+      NewMap
+    end,
+    OriginalMap,
+    Vents).
+
+line_to_points({{from, X1, Y}, {to, X2, Y}}) ->
+  Increment = if
+                X2 > X1 -> 1;
+                true -> -1
+              end,
+  XPositions = lists:seq(X1, X2, Increment),
+  [{X, Y} || X <- XPositions];
+line_to_points({{from, X, Y1}, {to, X, Y2}}) ->
+  Increment = if
+                Y2 > Y1 -> 1;
+                true -> -1
+              end,
+  YPositions = lists:seq(Y1, Y2, Increment),
+  [{X, Y} || Y <- YPositions];
+line_to_points({{from, X1, Y1}, {to, X2, Y2}}) ->
+  XIncrement = if
+                 X2 > X1 -> 1;
+                 true -> -1
+               end,
+  YIncrement = if
+                 Y2 > Y1 -> 1;
+                 true -> -1
+               end,
+  XPositions = lists:seq(X1, X2, XIncrement),
+  YPositions = lists:seq(Y1, Y2, YIncrement),
+  lists:zip(XPositions, YPositions).
+
+day5_test() ->
+  ?assertMatch([{0, 0}, {1, 0}, {2, 0}], line_to_points({{from, 0, 0}, {to, 2, 0}})),
+  ?assertMatch([{0, 0}, {0, 1}, {0, 2}], line_to_points({{from, 0, 0}, {to, 0, 2}})),
+  ?assertMatch([{0, 0}, {1, 1}, {2, 2}], line_to_points({{from, 0, 0}, {to, 2, 2}})),
+  ?assertMatch([{2, 0}, {1, 1}, {0, 2}], line_to_points({{from, 2, 0}, {to, 0, 2}})),
+
+  StartingMap = [
+    [0, 0],
+    [0, 0]
+  ],
+  MapShouldntChange = place_vents(StartingMap, []),
+  ?assertMatch(StartingMap, MapShouldntChange),
+
+  VentsLines = [{{from, 0, 0}, {to, 1, 0}}],
+  ExpectedMap = [
+    [1, 1],
+    [0, 0]
+  ],
+  Map = place_vents(StartingMap, VentsLines),
+  ?assertMatch(ExpectedMap, Map),
+
+
+  ok.
