@@ -10,6 +10,8 @@
   day4_part1/0,
   day4_part2/0,
   day5_part2/0,
+  day6_part1/0,
+  day6_part2/0,
   get_differences/1,
   get_trio_sums/1
 ]).
@@ -455,7 +457,7 @@ index_of(Item, [_ | Tl], Index) -> index_of(Item, Tl, Index + 1).
 
 day5_part2() ->
   {ok, Content} = file:read_file("input.txt"),
-  RawVentsLines = string:split(Content, "\n", all),
+  RawVentsLines = string:lexemes(Content, "\n"),
   VentsLines = lists:map(
     fun(RawVentsLine) ->
       [From, To] = string:split(RawVentsLine, " -> ", all),
@@ -534,6 +536,60 @@ day5_test() ->
   ],
   Map = place_vents(StartingMap, VentsLines),
   ?assertMatch(ExpectedMap, Map),
+  ok.
 
+%%###############%%
+%%     DAY 6     %%
+%%###############%%
 
+day6_part1() ->
+  {ok, Content} = file:read_file("input.txt"),
+  LanternfishStrings = string:lexemes(Content, ",\n"),
+  Lanternfishes = [binary_to_integer(LanternfishString) || LanternfishString <- LanternfishStrings],
+  NbFishes = lists:zip(lists:seq(0,8), lists:duplicate(9, 0)),
+  LanternfishInternalTimers = lists:foldl(
+    fun(Lanternfish, NbFishesAcc) ->
+      {_, Value} = lists:keyfind(Lanternfish, 1, NbFishesAcc),
+      lists:keyreplace(Lanternfish, 1, NbFishesAcc, {Lanternfish, Value + 1})
+    end,
+    NbFishes,
+    Lanternfishes
+  ),
+  LanternfishCount = simulate_days(LanternfishInternalTimers, 80),
+  io:fwrite("Answer: ~p~n", [LanternfishCount]),
+  ok.
+
+day6_part2() ->
+  {ok, Content} = file:read_file("input.txt"),
+  LanternfishStrings = string:lexemes(Content, ",\n"),
+  Lanternfishes = [binary_to_integer(LanternfishString) || LanternfishString <- LanternfishStrings],
+  NbFishes = lists:zip(lists:seq(0,8), lists:duplicate(9, 0)),
+  LanternfishInternalTimers = lists:foldl(
+    fun(Lanternfish, NbFishesAcc) ->
+      {_, Value} = lists:keyfind(Lanternfish, 1, NbFishesAcc),
+      lists:keyreplace(Lanternfish, 1, NbFishesAcc, {Lanternfish, Value + 1})
+    end,
+    NbFishes,
+    Lanternfishes
+  ),
+  LanternfishCount = simulate_days(LanternfishInternalTimers, 256),
+  io:fwrite("Answer: ~p~n", [LanternfishCount]),
+  ok.
+
+simulate_day([{0, Value0}, {1, Value1}, {2, Value2}, {3, Value3}, {4, Value4}, {5, Value5}, {6, Value6}, {7, Value7}, {8, Value8}]) ->
+  [{0, Value1}, {1, Value2}, {2, Value3}, {3, Value4}, {4, Value5}, {5, Value6}, {6, Value7+Value0}, {7, Value8}, {8, Value0}].
+
+simulate_days(InternalTimers, 0) ->
+  lists:sum([Value || {_, Value} <- InternalTimers]);
+simulate_days(InternalTimers, Days) ->
+  simulate_days(simulate_day(InternalTimers), Days-1).
+
+day6_test() ->
+  LanternfishInternalTimers = [{0,0},{1,1},{2,1},{3,2},{4,1},{5,0},{6,0},{7,0},{8,0}],
+  InternalTimersAfterOneDay = [{0,1},{1,1},{2,2},{3,1},{4,0},{5,0},{6,0},{7,0},{8,0}],
+  ExpectedCount = 5934,
+  ExpectedCount2 = 26984457539,
+  ?assertMatch(InternalTimersAfterOneDay, simulate_day(LanternfishInternalTimers)),
+  ?assertMatch(ExpectedCount, simulate_days(LanternfishInternalTimers, 80)),
+  ?assertMatch(ExpectedCount2, simulate_days(LanternfishInternalTimers, 256)),
   ok.
