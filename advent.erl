@@ -14,6 +14,8 @@
   day6_part2/0,
   day7_part1/0,
   day7_part2/0,
+  day8_part1/0,
+  day8_part2/0,
   get_differences/1,
   get_trio_sums/1
 ]).
@@ -629,4 +631,160 @@ day7_part2() ->
     Positions
   ),
   io:fwrite("Answer: ~p~n", [lists:min(FuelCosts)]),
+  ok.
+
+%%###############%%
+%%     DAY 8     %%
+%%###############%%
+
+day8_part1() ->
+  {ok, Content} = file:read_file("input.txt"),
+  DisplaysRaw = string:lexemes(Content, "\n"),
+  OutputValues = lists:map(
+    fun(DisplayRaw) ->
+      [_, Output] = string:split(DisplayRaw, " | ", all),
+      Numbers = string:split(Output, " ", all),
+      [decode_easy_number(binary_to_list(Number)) || Number <- Numbers]
+    end,
+    DisplaysRaw
+  ),
+  ValidDigitsCount = lists:filter(
+    fun(Value) ->
+      Value =/= -1
+    end,
+    lists:flatten(OutputValues)
+  ),
+  io:fwrite("Answer: ~p~n", [length(ValidDigitsCount)]),
+  ok.
+
+day8_part2() ->
+  {ok, Content} = file:read_file("input.txt"),
+  DisplaysRaw = string:lexemes(Content, "\n"),
+  DisplayLines = lists:map(
+    fun(DisplayRaw) ->
+      [Ciphers, Output] = string:split(DisplayRaw, " | ", all),
+      NumbersRaw = [lists:sort(binary_to_list(NumberRaw)) || NumberRaw <- string:split(Output, " ", all)],
+      CipherRaw = [lists:sort(binary_to_list(CipherLetter)) || CipherLetter <- string:split(Ciphers, " ", all)],
+      CipherDict = generate_cipher_dictionary(CipherRaw),
+      {CipherDict, NumbersRaw}
+    end,
+    DisplaysRaw
+  ),
+  OutputValues = lists:map(
+    fun({CipherDict, Numbers}) ->
+      really_decode_number(CipherDict, Numbers)
+    end,
+    DisplayLines
+  ),
+  io:fwrite("Answer: ~p~n", [lists:sum(OutputValues)]),
+  ok.
+
+decode_easy_number(Number) ->
+  case length(Number) of
+    2 -> 1;
+    3 -> 7;
+    4 -> 4;
+    7 -> 8;
+    _ -> -1
+  end.
+
+really_decode_number(CipherDict, Output) ->
+  Digits = lists:map(
+    fun(OutputNumber) -> 
+      {Digit, _} = lists:keyfind(OutputNumber, 2, CipherDict),
+      integer_to_list(Digit)
+    end,
+    Output),
+  list_to_integer(lists:concat(Digits)).
+
+generate_cipher_dictionary(Cipher) ->
+  EmptyDict = lists:zip(lists:seq(0, 9), lists:duplicate(10, null)),
+  SortedCipher = lists:sort(fun(A, B) -> length(A) =< length(B) end, Cipher),
+  generate_partial_dictionary(SortedCipher, EmptyDict).
+
+generate_partial_dictionary([Number1, _, _, _, _, _, _, _, _, _] = SortedCipher, 
+[{0, null}, {1, null}, {2, null}, {3, null}, {4, null}, {5, null}, {6, null}, {7, null}, {8, null}, {9, null}] = CipherDict) ->
+  NewDict = lists:keyreplace(1, 1, CipherDict, {1, Number1}),
+  generate_partial_dictionary(SortedCipher, NewDict);
+generate_partial_dictionary([_, _, Number4, _, _, _, _, _, _, _] = SortedCipher, 
+[{0, null}, {1, _}, {2, null}, {3, null}, {4, null}, {5, null}, {6, null}, {7, null}, {8, null}, {9, null}] = CipherDict) ->
+  NewDict = lists:keyreplace(4, 1, CipherDict, {4, Number4}),
+  generate_partial_dictionary(SortedCipher, NewDict);
+generate_partial_dictionary([_, Number7, _, _, _, _, _, _, _, _] = SortedCipher, 
+[{0, null}, {1, _}, {2, null}, {3, null}, {4, _}, {5, null}, {6, null}, {7, null}, {8, null}, {9, null}] = CipherDict) ->
+  NewDict = lists:keyreplace(7, 1, CipherDict, {7, Number7}),
+  generate_partial_dictionary(SortedCipher, NewDict);
+generate_partial_dictionary([_, _, _, _, _, _, _, _, _, Number8] = SortedCipher, 
+[{0, null}, {1, _}, {2, null}, {3, null}, {4, _}, {5, null}, {6, null}, {7, _}, {8, null}, {9, null}] = CipherDict) ->
+  NewDict = lists:keyreplace(8, 1, CipherDict, {8, Number8}),
+  generate_partial_dictionary(SortedCipher, NewDict);
+generate_partial_dictionary([_, _, _, _, _, _, NumberUnk1, NumberUnk2, NumberUnk3, _] = SortedCipher, 
+[{0, null}, {1, Number1}, {2, null}, {3, null}, {4, Number4}, {5, null}, {6, null}, {7, _}, {8, _}, {9, null}] = CipherDict) ->
+  NewDictUnk1 = case number_contains(NumberUnk1, Number1) of
+    false -> lists:keyreplace(6, 1, CipherDict, {6, NumberUnk1});
+    true -> case number_contains(NumberUnk1, Number4) of
+      false -> lists:keyreplace(0, 1, CipherDict, {0, NumberUnk1});
+      true -> lists:keyreplace(9, 1, CipherDict, {9, NumberUnk1})
+    end
+  end,
+  NewDictUnk2 = case number_contains(NumberUnk2, Number1) of
+    false -> lists:keyreplace(6, 1, NewDictUnk1, {6, NumberUnk2});
+    true -> case number_contains(NumberUnk2, Number4) of
+      false -> lists:keyreplace(0, 1, NewDictUnk1, {0, NumberUnk2});
+      true -> lists:keyreplace(9, 1, NewDictUnk1, {9, NumberUnk2})
+    end
+  end,
+  NextDict = case number_contains(NumberUnk3, Number1) of
+    false -> lists:keyreplace(6, 1, NewDictUnk2, {6, NumberUnk3});
+    true -> case number_contains(NumberUnk3, Number4) of
+      false -> lists:keyreplace(0, 1, NewDictUnk2, {0, NumberUnk3});
+      true -> lists:keyreplace(9, 1, NewDictUnk2, {9, NumberUnk3})
+    end
+  end,
+  generate_partial_dictionary(SortedCipher, NextDict);
+generate_partial_dictionary([_, _, _, NumberUnk1, NumberUnk2, NumberUnk3, _, _, _, _] = _SortedCipher, 
+[{0, _}, {1, Number1}, {2, null}, {3, null}, {4, _}, {5, null}, {6, Number6}, {7, _}, {8, _}, {9, _}] = CipherDict) ->
+  NewDictUnk1 = case number_contains(NumberUnk1, Number1) of
+    true -> lists:keyreplace(3, 1, CipherDict, {3, NumberUnk1});
+    false -> case number_contains(Number6, NumberUnk1) of
+      false -> lists:keyreplace(2, 1, CipherDict, {2, NumberUnk1});
+      true -> lists:keyreplace(5, 1, CipherDict, {5, NumberUnk1})
+    end
+  end,
+  NewDictUnk2 = case number_contains(NumberUnk2, Number1) of
+    true -> lists:keyreplace(3, 1, NewDictUnk1, {3, NumberUnk2});
+    false -> case number_contains(Number6, NumberUnk2) of
+      false -> lists:keyreplace(2, 1, NewDictUnk1, {2, NumberUnk2});
+      true -> lists:keyreplace(5, 1, NewDictUnk1, {5, NumberUnk2})
+    end
+  end,
+  case number_contains(NumberUnk3, Number1) of
+    true -> lists:keyreplace(3, 1, NewDictUnk2, {3, NumberUnk3});
+    false -> case number_contains(Number6, NumberUnk3) of
+      false -> lists:keyreplace(2, 1, NewDictUnk2, {2, NumberUnk3});
+      true -> lists:keyreplace(5, 1, NewDictUnk2, {5, NumberUnk3})
+    end
+  end.
+
+number_contains(Number, SubNumber) ->
+  lists:all(
+    fun(Letter) ->
+      lists:member(Letter, Number)
+    end,
+    SubNumber  
+  ).
+
+day8_test() ->
+  ?assertMatch(-1, decode_easy_number("bcefa")),
+  ?assertMatch(1, decode_easy_number("ge")),
+  ?assertMatch(7, decode_easy_number("efg")),
+  ?assertMatch(4, decode_easy_number("efgb")),
+  ?assertMatch(8, decode_easy_number("cefdgab")),
+
+  CipherRaw = ["acedgfb", "bcdef", "acdfg", "abcdf", "abd", "abcdef", "bcdefg", "abef", "abcdeg", "ab"],
+  CipherDict = [{0, "abcdeg"}, {1, "ab"}, {2, "acdfg"}, {3, "abcdf"}, {4, "abef"}, {5, "bcdef"}, {6, "bcdefg"}, {7, "abd"}, {8, "acedgfb"}, {9, "abcdef"}],
+  ?assertMatch(CipherDict, generate_cipher_dictionary(CipherRaw)),
+
+  Numbers = ["bcdef", "abcdf", "bcdef", "abcdf"],
+  ?assertMatch(5353, really_decode_number(CipherDict, Numbers)),
   ok.
