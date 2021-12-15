@@ -12,6 +12,8 @@
   day5_part2/0,
   day6_part1/0,
   day6_part2/0,
+  day7_part1/0,
+  day7_part2/0,
   get_differences/1,
   get_trio_sums/1
 ]).
@@ -585,11 +587,46 @@ simulate_days(InternalTimers, Days) ->
   simulate_days(simulate_day(InternalTimers), Days-1).
 
 day6_test() ->
-  LanternfishInternalTimers = [{0,0},{1,1},{2,1},{3,2},{4,1},{5,0},{6,0},{7,0},{8,0}],
-  InternalTimersAfterOneDay = [{0,1},{1,1},{2,2},{3,1},{4,0},{5,0},{6,0},{7,0},{8,0}],
+  LanternfishInternalTimers = [{0, 0}, {1, 1}, {2, 1}, {3, 2}, {4, 1}, {5, 0}, {6, 0}, {7, 0}, {8, 0}],
+  InternalTimersAfterOneDay = [{0, 1}, {1, 1}, {2, 2}, {3, 1}, {4, 0}, {5, 0}, {6, 0}, {7, 0}, {8, 0}],
   ExpectedCount = 5934,
   ExpectedCount2 = 26984457539,
   ?assertMatch(InternalTimersAfterOneDay, simulate_day(LanternfishInternalTimers)),
   ?assertMatch(ExpectedCount, simulate_days(LanternfishInternalTimers, 80)),
   ?assertMatch(ExpectedCount2, simulate_days(LanternfishInternalTimers, 256)),
+  ok.
+
+%%###############%%
+%%     DAY 7     %%
+%%###############%%
+
+day7_part1() ->
+  {ok, Content} = file:read_file("input.txt"),
+  CrabsRaw = string:lexemes(Content, ",\n"),
+  Crabs = [binary_to_integer(CrabRaw) || CrabRaw <- CrabsRaw],
+  Positions = lists:seq(0, lists:max(Crabs)),
+  FuelCosts = lists:map(
+    fun(Position) ->
+      AbsDifferences = [abs(Crab - Position) || Crab <- Crabs],
+      lists:sum(AbsDifferences)
+    end,
+    Positions
+  ),
+  io:fwrite("Answer: ~p~n", [lists:min(FuelCosts)]),
+  ok.
+
+day7_part2() ->
+  {ok, Content} = file:read_file("input.txt"),
+  CrabsRaw = string:lexemes(Content, ",\n"),
+  Crabs = [binary_to_integer(CrabRaw) || CrabRaw <- CrabsRaw],
+  Positions = lists:seq(0, lists:max(Crabs)),
+  FuelCosts = lists:map(
+    fun(Position) ->
+      AbsDifferences = [abs(Crab - Position) || Crab <- Crabs],
+      FuelCost = [(N + 1) * N / 2 || N <- AbsDifferences],
+      list_to_integer(float_to_list(lists:sum(FuelCost), [{decimals, 0}]))
+    end,
+    Positions
+  ),
+  io:fwrite("Answer: ~p~n", [lists:min(FuelCosts)]),
   ok.
