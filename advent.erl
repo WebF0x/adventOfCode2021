@@ -702,7 +702,7 @@ generate_cipher_dictionary(Cipher) ->
   SortedCipher = lists:sort(fun(A, B) -> length(A) =< length(B) end, Cipher),
   generate_partial_dictionary(SortedCipher, EmptyDict).
 
-generate_partial_dictionary([Number1, _, _, _, _, _, _, _, _, _] = SortedCipher, 
+generate_partial_dictionary([Number1, _, _, _, _, _, _, _, _, _] = SortedCipher,
 [{0, null}, {1, null}, {2, null}, {3, null}, {4, null}, {5, null}, {6, null}, {7, null}, {8, null}, {9, null}] = CipherDict) ->
   NewDict = lists:keyreplace(1, 1, CipherDict, {1, Number1}),
   generate_partial_dictionary(SortedCipher, NewDict);
@@ -710,69 +710,39 @@ generate_partial_dictionary([_, _, Number4, _, _, _, _, _, _, _] = SortedCipher,
 [{0, null}, {1, _}, {2, null}, {3, null}, {4, null}, {5, null}, {6, null}, {7, null}, {8, null}, {9, null}] = CipherDict) ->
   NewDict = lists:keyreplace(4, 1, CipherDict, {4, Number4}),
   generate_partial_dictionary(SortedCipher, NewDict);
-generate_partial_dictionary([_, Number7, _, _, _, _, _, _, _, _] = SortedCipher, 
-[{0, null}, {1, _}, {2, null}, {3, null}, {4, _}, {5, null}, {6, null}, {7, null}, {8, null}, {9, null}] = CipherDict) ->
+generate_partial_dictionary([_, Number7, _, _, _, _, _, _, _, _] = SortedCipher,
+  [{0, null}, {1, _}, {2, null}, {3, null}, {4, _}, {5, null}, {6, null}, {7, null}, {8, null}, {9, null}] = CipherDict) ->
   NewDict = lists:keyreplace(7, 1, CipherDict, {7, Number7}),
   generate_partial_dictionary(SortedCipher, NewDict);
-generate_partial_dictionary([_, _, _, _, _, _, _, _, _, Number8] = SortedCipher, 
-[{0, null}, {1, _}, {2, null}, {3, null}, {4, _}, {5, null}, {6, null}, {7, _}, {8, null}, {9, null}] = CipherDict) ->
+generate_partial_dictionary([_, _, _, _, _, _, _, _, _, Number8] = SortedCipher,
+  [{0, null}, {1, _}, {2, null}, {3, null}, {4, _}, {5, null}, {6, null}, {7, _}, {8, null}, {9, null}] = CipherDict) ->
   NewDict = lists:keyreplace(8, 1, CipherDict, {8, Number8}),
   generate_partial_dictionary(SortedCipher, NewDict);
-generate_partial_dictionary([_, _, _, _, _, _, NumberUnk1, NumberUnk2, NumberUnk3, _] = SortedCipher, 
-[{0, null}, {1, Number1}, {2, null}, {3, null}, {4, Number4}, {5, null}, {6, null}, {7, _}, {8, _}, {9, null}] = CipherDict) ->
-  NewDictUnk1 = case number_contains(NumberUnk1, Number1) of
-    false -> lists:keyreplace(6, 1, CipherDict, {6, NumberUnk1});
-    true -> case number_contains(NumberUnk1, Number4) of
-      false -> lists:keyreplace(0, 1, CipherDict, {0, NumberUnk1});
-      true -> lists:keyreplace(9, 1, CipherDict, {9, NumberUnk1})
-    end
-  end,
-  NewDictUnk2 = case number_contains(NumberUnk2, Number1) of
-    false -> lists:keyreplace(6, 1, NewDictUnk1, {6, NumberUnk2});
-    true -> case number_contains(NumberUnk2, Number4) of
-      false -> lists:keyreplace(0, 1, NewDictUnk1, {0, NumberUnk2});
-      true -> lists:keyreplace(9, 1, NewDictUnk1, {9, NumberUnk2})
-    end
-  end,
-  NextDict = case number_contains(NumberUnk3, Number1) of
-    false -> lists:keyreplace(6, 1, NewDictUnk2, {6, NumberUnk3});
-    true -> case number_contains(NumberUnk3, Number4) of
-      false -> lists:keyreplace(0, 1, NewDictUnk2, {0, NumberUnk3});
-      true -> lists:keyreplace(9, 1, NewDictUnk2, {9, NumberUnk3})
-    end
-  end,
+generate_partial_dictionary([_, _, _, _, _, _, NumberUnknown1, NumberUnknown2, NumberUnknown3, _] = SortedCipher,
+  [{0, null}, {1, Number1}, {2, null}, {3, null}, {4, Number4}, {5, null}, {6, null}, {7, _}, {8, _}, {9, null}] = CipherDict) ->
+  Maybe6s = [NumberUnknown1, NumberUnknown2, NumberUnknown3],
+  {[N6], ZeroOrNine} = lists:partition(fun(N) -> not number_contains(N, Number1) end, Maybe6s),
+  {[N0], [N9]} = lists:partition(fun(N) -> not number_contains(N, Number4) end, ZeroOrNine),
+  NextDict = merge(CipherDict, [{0, N0}, {6, N6}, {9, N9}]),
   generate_partial_dictionary(SortedCipher, NextDict);
-generate_partial_dictionary([_, _, _, NumberUnk1, NumberUnk2, NumberUnk3, _, _, _, _] = _SortedCipher, 
-[{0, _}, {1, Number1}, {2, null}, {3, null}, {4, _}, {5, null}, {6, Number6}, {7, _}, {8, _}, {9, _}] = CipherDict) ->
-  NewDictUnk1 = case number_contains(NumberUnk1, Number1) of
-    true -> lists:keyreplace(3, 1, CipherDict, {3, NumberUnk1});
-    false -> case number_contains(Number6, NumberUnk1) of
-      false -> lists:keyreplace(2, 1, CipherDict, {2, NumberUnk1});
-      true -> lists:keyreplace(5, 1, CipherDict, {5, NumberUnk1})
-    end
-  end,
-  NewDictUnk2 = case number_contains(NumberUnk2, Number1) of
-    true -> lists:keyreplace(3, 1, NewDictUnk1, {3, NumberUnk2});
-    false -> case number_contains(Number6, NumberUnk2) of
-      false -> lists:keyreplace(2, 1, NewDictUnk1, {2, NumberUnk2});
-      true -> lists:keyreplace(5, 1, NewDictUnk1, {5, NumberUnk2})
-    end
-  end,
-  case number_contains(NumberUnk3, Number1) of
-    true -> lists:keyreplace(3, 1, NewDictUnk2, {3, NumberUnk3});
-    false -> case number_contains(Number6, NumberUnk3) of
-      false -> lists:keyreplace(2, 1, NewDictUnk2, {2, NumberUnk3});
-      true -> lists:keyreplace(5, 1, NewDictUnk2, {5, NumberUnk3})
-    end
-  end.
+generate_partial_dictionary([_, _, _, NumberUnknown1, NumberUnknown2, NumberUnknown3, _, _, _, _] = _SortedCipher,
+  [{0, _}, {1, Number1}, {2, null}, {3, null}, {4, _}, {5, null}, {6, Number6}, {7, _}, {8, _}, {9, _}] = CipherDict) ->
+  Maybe3s = [NumberUnknown1, NumberUnknown2, NumberUnknown3],
+  {[N3], TwoOrFive} = lists:partition(fun(N) -> number_contains(N, Number1) end, Maybe3s),
+  {[N2], [N5]} = lists:partition(fun(N) -> not number_contains(Number6, N) end, TwoOrFive),
+  merge(CipherDict, [{2, N2}, {3, N3}, {5, N5}]).
 
 number_contains(Number, SubNumber) ->
   lists:all(
     fun(Letter) ->
       lists:member(Letter, Number)
     end,
-    SubNumber  
+    SubNumber
   ).
+
+merge(OriginalDict, OverwritingDict) ->
+  ReplaceFun = fun({Key, Value}) -> {Key, proplists:get_value(Key, OverwritingDict, Value)} end,
+  lists:map(ReplaceFun, OriginalDict).
 
 day8_test() ->
   ?assertMatch(-1, decode_easy_number("bcefa")),
