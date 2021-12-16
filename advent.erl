@@ -16,6 +16,8 @@
   day7_part2/0,
   day8_part1/0,
   day8_part2/0,
+  day9_part1/0,
+  day9_part2/0,
   get_differences/1,
   get_trio_sums/1
 ]).
@@ -757,4 +759,81 @@ day8_test() ->
 
   Numbers = ["bcdef", "abcdf", "bcdef", "abcdf"],
   ?assertMatch(5353, really_decode_number(CipherDict, Numbers)),
+  ok.
+
+%%###############%%
+%%     DAY 9     %%
+%%###############%%
+
+day9_part1() ->
+  {ok, Content} = file:read_file("input.txt"),
+  RowsRaw = [binary_to_list(RowRaw) || RowRaw <- string:lexemes(Content, "\n")],
+  HeightsGrid = lists:map(
+    fun(RowRaw) ->
+      [list_to_integer([HeightAscii]) || HeightAscii <- RowRaw]
+    end,
+    RowsRaw),
+  io:fwrite("Answer: ~p~n", [risk_level(HeightsGrid)]),
+  ok.
+
+day9_part2() ->
+  {ok, Content} = file:read_file("input.txt"),
+  RowsRaw = [binary_to_list(RowRaw) || RowRaw <- string:lexemes(Content, "\n")],
+  HeightsGrid = lists:map(
+    fun(RowRaw) ->
+      [list_to_integer(Height) || Height <- RowRaw]
+    end,
+    RowsRaw),
+  io:fwrite("Answer: ~p~n", [risk_level(HeightsGrid)]),
+  ok.
+
+risk_level(HeightsGrid) ->
+  GridHeight = length(HeightsGrid),
+  GridWidth = length(lists:nth(1, HeightsGrid)),
+  CoordinatesY = lists:seq(1, GridHeight),
+  CoordinatesX = lists:seq(1, GridWidth),
+  AllXs = lists:flatten(lists:duplicate(GridHeight, CoordinatesX)),
+  AllYs = lists:sort(lists:flatten(lists:duplicate(GridWidth, CoordinatesY))),
+  AllPositions = lists:zip(AllXs, AllYs),
+  risk_level(HeightsGrid, AllPositions, 0).
+
+risk_level(HeightsGrid, [{X, Y} | NextPositions], RiskLevel) ->
+  CurrentHeight = get_height(HeightsGrid, X, Y),
+  NeighboursMaybePositions = [
+    {X + 1, Y},
+    {X - 1, Y},
+    {X, Y + 1},
+    {X, Y - 1}
+  ],
+  NeighboursPositions = lists:filter(
+    fun({NeighbourX, NeighbourY}) ->
+      NeighbourX > 0 andalso NeighbourY > 0 andalso NeighbourX =< length(lists:nth(1, HeightsGrid)) andalso NeighbourY =< length(HeightsGrid)
+    end,
+    NeighboursMaybePositions
+  ),
+  NeighbourHeights = lists:map(
+    fun({NeighbourX, NeighbourY}) ->
+      get_height(HeightsGrid, NeighbourX, NeighbourY)
+    end,
+    NeighboursPositions
+  ),
+  IsRisky = lists:all(fun(NeighbourHeight) ->
+    NeighbourHeight > CurrentHeight end, NeighbourHeights),
+  CurrentRisk = if IsRisky -> (CurrentHeight + 1); true -> 0 end,
+  CurrentRisk + risk_level(HeightsGrid, NextPositions, RiskLevel);
+risk_level(_HeightsGrid, [], RiskLevel) ->
+  RiskLevel.
+
+get_height(HeightsGrid, X, Y) ->
+  Row = lists:nth(Y, HeightsGrid),
+  lists:nth(X, Row).
+
+day9_test() ->
+  HeightsGrid = [
+    [9, 9, 9, 9],
+    [9, 1, 9, 1],
+    [1, 9, 9, 9]
+  ],
+  ?assertMatch(6, risk_level(HeightsGrid)),
+
   ok.
