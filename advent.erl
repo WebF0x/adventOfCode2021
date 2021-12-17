@@ -790,11 +790,7 @@ day9_part2() ->
 risk_level(HeightsGrid) ->
   GridHeight = length(HeightsGrid),
   GridWidth = length(lists:nth(1, HeightsGrid)),
-  CoordinatesY = lists:seq(1, GridHeight),
-  CoordinatesX = lists:seq(1, GridWidth),
-  AllXs = lists:flatten(lists:duplicate(GridHeight, CoordinatesX)),
-  AllYs = lists:sort(lists:flatten(lists:duplicate(GridWidth, CoordinatesY))),
-  AllPositions = lists:zip(AllXs, AllYs),
+  AllPositions = [{X, Y} || X <- lists:seq(1, GridWidth), Y <- lists:seq(1, GridHeight)],
   risk_level(HeightsGrid, AllPositions, 0).
 
 risk_level(HeightsGrid, [{X, Y} | NextPositions], RiskLevel) ->
@@ -807,7 +803,9 @@ risk_level(HeightsGrid, [{X, Y} | NextPositions], RiskLevel) ->
   ],
   NeighboursPositions = lists:filter(
     fun({NeighbourX, NeighbourY}) ->
-      NeighbourX > 0 andalso NeighbourY > 0 andalso NeighbourX =< length(lists:nth(1, HeightsGrid)) andalso NeighbourY =< length(HeightsGrid)
+      GridHeight = length(HeightsGrid),
+      GridWidth = length(lists:nth(1, HeightsGrid)),
+      NeighbourX > 0 andalso NeighbourY > 0 andalso NeighbourX =< GridWidth andalso NeighbourY =< GridHeight
     end,
     NeighboursMaybePositions
   ),
