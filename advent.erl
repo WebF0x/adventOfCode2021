@@ -781,15 +781,15 @@ day9_part2() ->
   RowsRaw = [binary_to_list(RowRaw) || RowRaw <- string:lexemes(Content, "\n")],
   HeightsGrid = lists:map(
     fun(RowRaw) ->
-      [list_to_integer(Height) || Height <- RowRaw]
+      [list_to_integer([HeightAscii]) || HeightAscii <- RowRaw]
     end,
     RowsRaw),
-  io:fwrite("Answer: ~p~n", [risk_level(HeightsGrid)]),
+  io:fwrite("Answer: ~p~n", [get_product_of_3_biggest_basin_sizes(HeightsGrid)]),
   ok.
 
 risk_level(HeightsGrid) ->
-  GridHeight = length(HeightsGrid),
-  GridWidth = length(lists:nth(1, HeightsGrid)),
+  GridHeight = get_grid_height(HeightsGrid),
+  GridWidth = get_grid_width(HeightsGrid),
   AllPositions = [{X, Y} || X <- lists:seq(1, GridWidth), Y <- lists:seq(1, GridHeight)],
   risk_level(HeightsGrid, AllPositions, 0).
 
@@ -803,8 +803,8 @@ risk_level(HeightsGrid, [{X, Y} | NextPositions], RiskLevel) ->
   ],
   NeighboursPositions = lists:filter(
     fun({NeighbourX, NeighbourY}) ->
-      GridHeight = length(HeightsGrid),
-      GridWidth = length(lists:nth(1, HeightsGrid)),
+      GridHeight = get_grid_height(HeightsGrid),
+      GridWidth = get_grid_width(HeightsGrid),
       NeighbourX > 0 andalso NeighbourY > 0 andalso NeighbourX =< GridWidth andalso NeighbourY =< GridHeight
     end,
     NeighboursMaybePositions
@@ -826,6 +826,75 @@ get_height(HeightsGrid, X, Y) ->
   Row = lists:nth(Y, HeightsGrid),
   lists:nth(X, Row).
 
+get_grid_height(HeightsGrid) ->
+  length(HeightsGrid).
+
+get_grid_width(HeightsGrid) ->
+  length(lists:nth(1, HeightsGrid)).
+
+get_product_of_3_biggest_basin_sizes(HeightsGrid) ->
+  Basins = get_basins(HeightsGrid),
+  DescendingBasins = lists:reverse(lists:sort(Basins)),
+  lists:nth(1, DescendingBasins) * lists:nth(2, DescendingBasins) * lists:nth(3, DescendingBasins).
+
+get_basins(HeightsGrid) ->
+  GridHeight = get_grid_height(HeightsGrid),
+  GridWidth = get_grid_width(HeightsGrid),
+  AllPositions = [{X, Y} || X <- lists:seq(1, GridWidth), Y <- lists:seq(1, GridHeight)],
+  Result = lists:search(
+    fun({X, Y}) ->
+      get_height(HeightsGrid, X, Y) /= 9
+    end,
+    AllPositions
+  ),
+  case Result of
+    false ->
+      [];
+    {value, Seed} ->
+      BasinPositions = get_basin_positions(HeightsGrid, [Seed], []),
+      ModifiedGrid = lists:foldl(
+        fun({X, Y}, Grid) ->
+          OldRow = lists:nth(Y, Grid),
+          NewRow = replacenth(X, 9, OldRow),
+          NewGrid = replacenth(Y, NewRow, Grid),
+          NewGrid
+        end,
+        HeightsGrid,
+        BasinPositions
+      ),
+      [length(BasinPositions)] ++ get_basins(ModifiedGrid)
+  end.
+
+get_basin_positions(_HeightsGrid, [] = _Seeds, BasinPositions) ->
+  BasinPositions;
+get_basin_positions(HeightsGrid, [{HeadX, HeadY} = HeadSeed | TailSeeds] = _Seeds, BasinPositions) ->
+  NeighboursMaybePositions = [
+    {HeadX + 1, HeadY},
+    {HeadX - 1, HeadY},
+    {HeadX, HeadY + 1},
+    {HeadX, HeadY - 1}
+  ],
+  NewSeeds = lists:filter(
+    fun({X, Y}) ->
+      GridHeight = get_grid_height(HeightsGrid),
+      GridWidth = get_grid_width(HeightsGrid),
+      IsInsideGrid = X > 0 andalso Y > 0 andalso X =< GridWidth andalso Y =< GridHeight,
+      IsKnown = lists:member({X, Y}, TailSeeds) orelse lists:member({X, Y}, BasinPositions),
+      IsInsideGrid andalso not IsKnown andalso get_height(HeightsGrid, X, Y) /= 9
+    end,
+    NeighboursMaybePositions
+  ),
+  NewBasinPositions = [HeadSeed] ++ BasinPositions,
+  get_basin_positions(HeightsGrid, NewSeeds ++ TailSeeds, NewBasinPositions).
+
+replacenth(Index, Value, List) ->
+  replacenth(Index - 1, Value, List, [], 0).
+
+replacenth(ReplaceIndex, Value, [_ | List], Acc, ReplaceIndex) ->
+  lists:reverse(Acc) ++ [Value | List];
+replacenth(ReplaceIndex, Value, [V | List], Acc, Index) ->
+  replacenth(ReplaceIndex, Value, List, [V | Acc], Index + 1).
+
 day9_test() ->
   HeightsGrid = [
     [9, 9, 9, 9],
@@ -833,5 +902,14 @@ day9_test() ->
     [1, 9, 9, 9]
   ],
   ?assertMatch(6, risk_level(HeightsGrid)),
+
+  HeightsGridBasins = [
+    [3, 3, 9, 3, 3],
+    [3, 9, 9, 3, 9],
+    [9, 4, 4, 9, 2],
+    [9, 4, 4, 9, 2]
+  ],
+
+  ?assertMatch(36, get_product_of_3_biggest_basin_sizes(HeightsGridBasins)),
 
   ok.
